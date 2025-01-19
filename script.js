@@ -20,22 +20,26 @@ form.addEventListener('submit', async (event) => {
     const formData = new FormData(form);
     const data = {};
     for (const [key, value] of formData) {
-        if (key === 'operable' || key === 'expeditionary') {
-            data[key] = value === 'true';
-        } else if (key === 'amount' || key === 'website-fee' || key === 'desired-margin') {
-            data[key] = parseFloat(value);
-        } else {
-            data[key] = value;
-        }
+        data[key] = value;
     }
 
     try {
-        // Отримати координати з поштових індексів
-        const originCoords = await getCoordinatesFromZip(data.originZip);
-        const destinationCoords = await getCoordinatesFromZip(data.destinationZip);
+        // Визначення координат: спочатку перевіряємо ZIP, потім місто
+        let originCoords, destinationCoords;
+        if (data['origin-zip']) {
+            originCoords = await getCoordinatesFromZip(data['origin-zip']);
+        } else {
+            originCoords = await getCoordinatesFromCity(data['origin-city']);
+        }
+
+        if (data['destination-zip']) {
+            destinationCoords = await getCoordinatesFromZip(data['destination-zip']);
+        } else {
+            destinationCoords = await getCoordinatesFromCity(data['destination-city']);
+        }
 
         if (!originCoords || !destinationCoords) {
-            throw new Error('Invalid ZIP code');
+            throw new Error('Invalid location data');
         }
 
         // Сформувати запит до OpenRouteService API
@@ -66,62 +70,88 @@ form.addEventListener('submit', async (event) => {
         const distanceMeters = orsResponse.routes[0].summary.distance;
         const distanceMiles = distanceMeters * 0.000621371;
 
-        // Розрахувати базову вартість (модифікуй формулу за своїми потребами)
-               // Розрахувати базову вартість (модифікуй формулу за своїми потребами)
-               const baseCost = calculateBaseCost(distanceMiles, data.vehicleType, data.operable, data.trailerType, data.amount, data.expeditionary);
+        // Розрахувати базову вартість
+        const baseCost = calculateBaseCost(distanceMiles, data.vehicleType, data.operable, data.trailerType, data.amount, data.expeditionary);
 
-               // Розрахувати кінцеву ціну
-               const finalPrice = baseCost * (1 + data.websiteFee / 100) * (1 + data.desiredMargin / 100);
-       
-               // Показати результати
-               distanceSpan.textContent = distanceMiles.toFixed(2);
-               finalPriceSpan.textContent = finalPrice.toFixed(2);
-               resultsDiv.classList.remove('hidden');
-               resultsDiv.classList.add('show');
-               errorMessageDiv.style.display = 'none';
-       
-           } catch (error) {
-               console.error('Error:', error);
-               errorText.textContent = error.message || 'An unexpected error occurred.';
-               errorMessageDiv.classList.remove('hidden');
-               errorMessageDiv.classList.add('show');
-               resultsDiv.style.display = 'none';
-           }
-       });
-       
-       // Функція для розрахунку базової вартості (зміни її під свої потреби)
-       function calculateBaseCost(distance, vehicleType, operable, trailerType, amount, expeditionary) {
-           let baseRate = 0.5; // Базова ставка за милю
-       
-           // Модифікатори в залежності від параметрів
-           if (vehicleType === 'truck') baseRate *= 1.5;
-           else if (vehicleType === 'suv') baseRate *= 1.2;
-       
-           if (!operable) baseRate *= 1.3;
-           if (trailerType === 'enclosed') baseRate *= 1.4;
-           if (expeditionary) baseRate *= 1.7;
-       
-           return distance * baseRate * amount;
-       }
-       
-       // Функція для отримання координат з поштового індексу (використовує Nominatim API)
-       async function getCoordinatesFromZip(zipCode) {
-           const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&limit=1&postalcode=${zipCode}&countrycodes=US`;
-       
-           try {
-               const response = await fetch(nominatimUrl);
-               if (!response.ok) {
-                 throw new Error('Nominatim API error');
-               }
-               const data = await response.json();
-       
-               if (data && data.length > 0) {
-                   return [parseFloat(data[0].lon), parseFloat(data[0].lat)]; // OpenRouteService очікує [довгота, широта]
-               } else {
-                   throw new Error('Invalid ZIP code');
-               }
-           } catch (error) {
-               console.error('Error fetching coordinates from Nominatim:', error);
-               throw new Error('Error fetching coordinates');
-           }
-       }
+        // Додати фіксовану маржу
+        const fixedMargin = parseFloat(data['fixed-margin']) || 0;
+
+        // Додати доплату за Inop, якщо авто не на ходу
+        const inopFee = (data.operable === 'false' && parseFloat(data['inop-fee'])) || 0;
+
+        // Розрахувати кінцеву ціну
+        const finalPrice = baseCost + fixedMargin + inopFee;
+
+        // Показати результати
+        distanceSpan.textContent = distanceMiles.toFixed(2);
+        finalPriceSpan.textContent = finalPrice.toFixed(2);
+        resultsDiv.classList.remove('hidden');
+        resultsDiv.classList.add('show');
+        errorMessageDiv.style.display = 'none';
+
+    } catch (error) {
+        console.error('Error:', error);
+        errorText.textContent = error.message || 'An unexpected error occurred.';
+        errorMessageDiv.classList.remove('hidden');
+        errorMessageDiv.classList.add('show');
+        resultsDiv.style.display = 'none';
+    }
+});
+
+// Функція для розрахунку базової вартості (зміни її під свої потреби)
+function calculateBaseCost(distance, vehicleType, operable, trailerType, amount, expeditionary) {
+    let baseRate = 0.5; // Базова ставка за милю
+
+    // Модифікатори в залежності від параметрів
+    if (vehicleType === 'truck') baseRate *= 1.5;
+    else if (vehicleType === 'suv') baseRate *= 1.2;
+
+    if (trailerType === 'enclosed') baseRate *= 1.4;
+    if (expeditionary) baseRate *= 1.7;
+
+    return distance * baseRate * amount;
+}
+
+// Функція для отримання координат з поштового індексу (використовує Nominatim API)
+async function getCoordinatesFromZip(zipCode) {
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&limit=1&postalcode=${zipCode}&countrycodes=US`;
+
+    try {
+        const response = await fetch(nominatimUrl);
+        if (!response.ok) {
+          throw new Error('Nominatim API error');
+        }
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+            return [parseFloat(data[0].lon), parseFloat(data[0].lat)]; // OpenRouteService очікує [довгота, широта]
+        } else {
+            throw new Error('Invalid ZIP code');
+        }
+    } catch (error) {
+        console.error('Error fetching coordinates from Nominatim:', error);
+        throw new Error('Error fetching coordinates');
+    }
+}
+
+// Функція для отримання координат з назви міста (використовує Nominatim API)
+async function getCoordinatesFromCity(cityName) {
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${cityName}&countrycodes=US`;
+
+    try {
+        const response = await fetch(nominatimUrl);
+        if (!response.ok) {
+            throw new Error('Nominatim API error');
+        }
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+            return [parseFloat(data[0].lon), parseFloat(data[0].lat)];
+        } else {
+            throw new Error('Invalid city name');
+        }
+    } catch (error) {
+        console.error('Error fetching coordinates from Nominatim:', error);
+        throw new Error('Error fetching coordinates');
+    }
+}
