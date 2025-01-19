@@ -13,12 +13,12 @@
         <h1 class="text-center text-3xl font-bold text-gray-800 mb-8">Car Shipping Calculator</h1>
         <form id="calculator-form">
             <div class="mb-6">
-                <label for="origin-zip" class="block mb-2 text-sm font-medium text-gray-700">Origin ZIP:</label>
-                <input type="text" id="origin-zip" name="origin-zip" required pattern="^\d{5}(-\d{4})?$" title="Enter a valid ZIP code (e.g., 12345 or 12345-6789)" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 placeholder-gray-400">
-            </div>
-            <div class="mb-6">
-                <label for="destination-zip" class="block mb-2 text-sm font-medium text-gray-700">Destination ZIP:</label>
-                <input type="text" id="destination-zip" name="destination-zip" required pattern="^\d{5}(-\d{4})?$" title="Enter a valid ZIP code (e.g., 12345 or 12345-6789)" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 placeholder-gray-400">
+                <label for="origin-city" class="block mb-2 text-sm font-medium text-gray-700">Origin City (or ZIP):</label>
+                <input type="text" id="origin-city" name="origin-city" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 placeholder-gray-400">
+                <input type="hidden" id="origin-zip" name="origin-zip"> <div class="mb-6">
+                <label for="destination-city" class="block mb-2 text-sm font-medium text-gray-700">Destination City (or ZIP):</label>
+                <input type="text" id="destination-city" name="destination-city" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 placeholder-gray-400">
+                <input type="hidden" id="destination-zip" name="destination-zip">
             </div>
             <div class="mb-6">
                 <label for="vehicle-type" class="block mb-2 text-sm font-medium text-gray-700">Vehicle Type:</label>
@@ -56,12 +56,12 @@
                 </select>
             </div>
             <div class="mb-6">
-                <label for="website-fee" class="block mb-2 text-sm font-medium text-gray-700">Website Fee (%):</label>
-                <input type="number" id="website-fee" name="website-fee" min="0" value="0" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 placeholder-gray-400">
+                <label for="fixed-margin" class="block mb-2 text-sm font-medium text-gray-700">Fixed Margin ($):</label>
+                <input type="number" id="fixed-margin" name="fixed-margin" min="0" value="0" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 placeholder-gray-400">
             </div>
             <div class="mb-6">
-                <label for="desired-margin" class="block mb-2 text-sm font-medium text-gray-700">Desired Margin (%):</label>
-                <input type="number" id="desired-margin" name="desired-margin" min="0" value="0" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 placeholder-gray-400">
+                <label for="inop-fee" class="block mb-2 text-sm font-medium text-gray-700">Inoperable Fee ($):</label>
+                <input type="number" id="inop-fee" name="inop-fee" min="0" value="0" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700 placeholder-gray-400">
             </div>
             <button type="submit" class="calculate-button w-full px-6 py-3 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 transition-all ease-in-out duration-300">Calculate</button>
         </form>
